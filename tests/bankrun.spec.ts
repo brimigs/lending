@@ -15,12 +15,13 @@ import {
   ProgramTestContext,
 } from 'solana-bankrun';
 
-import { PublicKey, Keypair, Connection } from '@solana/web3.js';
+import { PublicKey, Keypair } from '@solana/web3.js';
 
 // @ts-ignore
 import IDL from '../target/idl/lending_protocol.json';
 import { LendingProtocol } from '../target/types/lending_protocol';
 import { SYSTEM_PROGRAM_ID } from '@coral-xyz/anchor/dist/cjs/native/system';
+import { BankrunContextWrapper } from './bankrun-utils/bankrunConnection';
 
 describe('Lending Smart Contract Tests', () => {
   let signer: Keypair;
@@ -32,8 +33,17 @@ describe('Lending Smart Contract Tests', () => {
   let program: Program<LendingProtocol>;
   let banksClient: BanksClient;
   let context: ProgramTestContext;
+  let bankrunContextWrapper: BankrunContextWrapper;
 
   it('create banks and user account', async () => {
+    // const provider = anchor.AnchorProvider.env();
+    // const connection = provider.connection;
+    // const wallet = provider.wallet as anchor.Wallet;
+    // anchor.setProvider(provider);
+
+    // const program = anchor.workspace
+    //   .LendingProtocol as Program<LendingProtocol>;
+
     context = await startAnchor(
       '',
       [{ name: 'lending', programId: new PublicKey(IDL.address) }],
@@ -41,23 +51,23 @@ describe('Lending Smart Contract Tests', () => {
     );
     provider = new BankrunProvider(context);
 
-    // console.log('test');
+    bankrunContextWrapper = new BankrunContextWrapper(context);
 
-    // const provider2 = anchor.AnchorProvider.env();
-    // const connection = provider2.connection;
+    const connection = bankrunContextWrapper.connection.toConnection();
 
-    // const pythSolanaReceiver = new PythSolanaReceiver({
-    //   connection,
-    //   wallet: provider.wallet,
-    // });
+    const pythSolanaReceiver = new PythSolanaReceiver({
+      connection,
+      wallet: provider.wallet,
+    });
 
-    // const SOL_PRICE_FEED_ID =
-    //   '0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d';
-    // const solUsdPriceFeedAccount = pythSolanaReceiver
-    //   .getPriceFeedAccountAddress(0, SOL_PRICE_FEED_ID)
-    //   .toBase58();
+    const SOL_PRICE_FEED_ID =
+      '0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d';
 
-    // console.log(solUsdPriceFeedAccount);
+    const solUsdPriceFeedAccount = pythSolanaReceiver
+      .getPriceFeedAccountAddress(0, SOL_PRICE_FEED_ID)
+      .toBase58();
+
+    console.log(solUsdPriceFeedAccount);
 
     program = new Program<LendingProtocol>(IDL as LendingProtocol, provider);
 
@@ -203,58 +213,4 @@ describe('Lending Smart Contract Tests', () => {
 
     // console.log('Deposit USDC', borrowSOL);
   });
-
-  // it('should fund the treasury token account', async () => {
-  //   const amount = 10_000 * 10 ** 9;
-  //   const mintTx = await mintTo(
-  //     // @ts-ignores
-  //     banksClient,
-  //     employer,
-  //     mint,
-  //     treasuryTokenAccount,
-  //     employer,
-  //     amount
-  //   );
-
-  //   console.log('Mint to Treasury Transaction Signature:', mintTx);
-  // });
-
-  // it('should create an employee vesting account', async () => {
-  //   const tx2 = await program.methods
-  //     .createEmployeeVesting(new BN(0), new BN(100), new BN(100), new BN(0))
-  //     .accounts({
-  //       beneficiary: beneficiary.publicKey,
-  //       vestingAccount: vestingAccountKey,
-  //     })
-  //     .rpc({ commitment: 'confirmed', skipPreflight: true });
-
-  //   console.log('Create Employee Account Transaction Signature:', tx2);
-  //   console.log('Employee account', employeeAccount.toBase58());
-  // });
-
-  // it('should claim tokens', async () => {
-  //   await new Promise((resolve) => setTimeout(resolve, 1000));
-
-  //   const currentClock = await banksClient.getClock();
-  //   context.setClock(
-  //     new Clock(
-  //       currentClock.slot,
-  //       currentClock.epochStartTimestamp,
-  //       currentClock.epoch,
-  //       currentClock.leaderScheduleEpoch,
-  //       1000n
-  //     )
-  //   );
-
-  //   console.log('Employee account', employeeAccount.toBase58());
-
-  //   const tx3 = await program2.methods
-  //     .claimTokens(companyName)
-  //     .accounts({
-  //       tokenProgram: TOKEN_PROGRAM_ID,
-  //     })
-  //     .rpc({ commitment: 'confirmed' });
-
-  //   console.log('Claim Tokens transaction signature', tx3);
-  // });
 });
