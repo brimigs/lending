@@ -66,6 +66,11 @@ pub fn process_deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
     // arithmetic overflow or other errors that could occur during the computation. If such an error occurs, 
     // these methods return None instead of causing a panic.
 
+    if bank.total_deposits == 0 {
+        bank.total_deposits = amount;
+        bank.total_deposit_shares = amount;
+    }
+    
     let deposit_ratio = amount.checked_div(bank.total_deposits).unwrap();
     let users_shares = bank.total_deposit_shares.checked_mul(deposit_ratio).unwrap();
     

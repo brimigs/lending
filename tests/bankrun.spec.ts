@@ -43,7 +43,8 @@ describe('Lending Smart Contract Tests', () => {
 
     // console.log('test');
 
-    // const connection = new Connection('https://api.devnet.solana.com');
+    // const provider2 = anchor.AnchorProvider.env();
+    // const connection = provider2.connection;
 
     // const pythSolanaReceiver = new PythSolanaReceiver({
     //   connection,
@@ -179,16 +180,28 @@ describe('Lending Smart Contract Tests', () => {
 
     console.log('Mint to USDC Bank Signature:', mintUSDCTx);
 
-    // const depositUSDC = await program.methods
-    //   .deposit(new BN(1))
+    const depositUSDC = await program.methods
+      .deposit(new BN(10))
+      .accounts({
+        signer: signer.publicKey,
+        mint: mintUSDC,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc({ commitment: 'confirmed' });
+
+    console.log('Deposit USDC', depositUSDC);
+
+    // const borrowSOL = await program.methods
+    //   .borrow(new BN(1))
     //   .accounts({
     //     signer: signer.publicKey,
-    //     mint: mintUSDC,
+    //     mint: mintSOL,
     //     tokenProgram: TOKEN_PROGRAM_ID,
+    //     priceUpdate:
     //   })
-    //   .rpc({});
+    //   .rpc({ commitment: 'confirmed' });
 
-    // console.log('Deposit USDC', depositUSDC);
+    // console.log('Deposit USDC', borrowSOL);
   });
 
   // it('should fund the treasury token account', async () => {
