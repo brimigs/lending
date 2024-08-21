@@ -37,14 +37,6 @@ pub struct Liquidate<'info> {
         associated_token::authority = liquidator,
         associated_token::token_program = token_program,
     )]
-    pub user_token_account: InterfaceAccount<'info, TokenAccount>, 
-    #[account( 
-        init_if_needed, 
-        payer = liquidator,
-        associated_token::mint = mint, 
-        associated_token::authority = liquidator,
-        associated_token::token_program = token_program,
-    )]
     pub liquidator_token_account: InterfaceAccount<'info, TokenAccount>, 
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -87,7 +79,7 @@ pub fn process_liquidate(ctx: Context<Liquidate>) -> Result<()> {
 
     // Transfer liquidation amount to bank
     let transfer_to_bank = TransferChecked {
-        from: ctx.accounts.user_token_account.to_account_info(),
+        from: ctx.accounts.liquidator_token_account.to_account_info(),
         mint: ctx.accounts.mint.to_account_info(),
         to: ctx.accounts.bank_token_account.to_account_info(),
         authority: ctx.accounts.liquidator.to_account_info(),
@@ -102,7 +94,7 @@ pub fn process_liquidate(ctx: Context<Liquidate>) -> Result<()> {
     // Transfer liquidation bonus to liquidator
 
     let transfer_to_liquidator = TransferChecked {
-        from: ctx.accounts.user_token_account.to_account_info(),
+        from: ctx.accounts.bank_token_account.to_account_info(),
         mint: ctx.accounts.mint.to_account_info(),
         to: ctx.accounts.liquidator_token_account.to_account_info(),
         authority: ctx.accounts.liquidator.to_account_info(),

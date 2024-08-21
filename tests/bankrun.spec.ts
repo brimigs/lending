@@ -23,7 +23,7 @@ import { LendingProtocol } from '../target/types/lending_protocol';
 import { SYSTEM_PROGRAM_ID } from '@coral-xyz/anchor/dist/cjs/native/system';
 import { BankrunContextWrapper } from '../bankrun-utils/bankrunConnection';
 
-describe('Lending Smart Contract Tests', () => {
+describe('Lending Smart Contract Tests', async () => {
   let signer: Keypair;
   let usdcBankAccount: PublicKey;
   let solBankAccount: PublicKey;
@@ -35,57 +35,56 @@ describe('Lending Smart Contract Tests', () => {
   let context: ProgramTestContext;
   let bankrunContextWrapper: BankrunContextWrapper;
 
+  const pyth = new PublicKey('7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE');
+
+  const devnetConnection = new Connection('https://api.devnet.solana.com');
+  const accountInfo = await devnetConnection.getAccountInfo(pyth);
+
+  context = await startAnchor(
+    '',
+    [{ name: 'lending', programId: new PublicKey(IDL.address) }],
+    [
+      {
+        address: pyth,
+        info: accountInfo,
+      },
+    ]
+  );
+  provider = new BankrunProvider(context);
+
+  bankrunContextWrapper = new BankrunContextWrapper(context);
+
+  const connection = bankrunContextWrapper.connection.toConnection();
+
+  const pythSolanaReceiver = new PythSolanaReceiver({
+    connection,
+    wallet: provider.wallet,
+  });
+
+  const SOL_PRICE_FEED_ID =
+    '0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a';
+
+  const solUsdPriceFeedAccount = pythSolanaReceiver
+    .getPriceFeedAccountAddress(0, SOL_PRICE_FEED_ID)
+    .toBase58();
+
+  const solUsdPriceFeedAccountPubkey = new PublicKey(solUsdPriceFeedAccount);
+  const feedAccountInfo = await devnetConnection.getAccountInfo(
+    solUsdPriceFeedAccountPubkey
+  );
+
+  context.setAccount(solUsdPriceFeedAccountPubkey, feedAccountInfo);
+
+  console.log('pricefeed:', solUsdPriceFeedAccount);
+
+  console.log('Pyth Account Info:', accountInfo);
+
+  program = new Program<LendingProtocol>(IDL as LendingProtocol, provider);
+
+  banksClient = context.banksClient;
+
+  signer = provider.wallet.payer;
   it('Test User Flow', async () => {
-    const pyth = new PublicKey('7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE');
-
-    const devnetConnection = new Connection('https://api.devnet.solana.com');
-    const accountInfo = await devnetConnection.getAccountInfo(pyth);
-
-    context = await startAnchor(
-      '',
-      [{ name: 'lending', programId: new PublicKey(IDL.address) }],
-      [
-        {
-          address: pyth,
-          info: accountInfo,
-        },
-      ]
-    );
-    provider = new BankrunProvider(context);
-
-    bankrunContextWrapper = new BankrunContextWrapper(context);
-
-    const connection = bankrunContextWrapper.connection.toConnection();
-
-    const pythSolanaReceiver = new PythSolanaReceiver({
-      connection,
-      wallet: provider.wallet,
-    });
-
-    const SOL_PRICE_FEED_ID =
-      '0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a';
-
-    const solUsdPriceFeedAccount = pythSolanaReceiver
-      .getPriceFeedAccountAddress(0, SOL_PRICE_FEED_ID)
-      .toBase58();
-
-    const solUsdPriceFeedAccountPubkey = new PublicKey(solUsdPriceFeedAccount);
-    const feedAccountInfo = await devnetConnection.getAccountInfo(
-      solUsdPriceFeedAccountPubkey
-    );
-
-    context.setAccount(solUsdPriceFeedAccountPubkey, feedAccountInfo);
-
-    console.log('pricefeed:', solUsdPriceFeedAccount);
-
-    console.log('Pyth Account Info:', accountInfo);
-
-    program = new Program<LendingProtocol>(IDL as LendingProtocol, provider);
-
-    banksClient = context.banksClient;
-
-    signer = provider.wallet.payer;
-
     const mintUSDC = await createMint(
       // @ts-ignore
       banksClient,
