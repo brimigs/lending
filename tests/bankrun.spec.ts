@@ -76,6 +76,13 @@ describe('Lending Smart Contract Tests', () => {
       .getPriceFeedAccountAddress(0, SOL_PRICE_FEED_ID)
       .toBase58();
 
+    const solUsdPriceFeedAccountPubkey = new PublicKey(solUsdPriceFeedAccount);
+    const feedAccountInfo = await devnetConnection.getAccountInfo(
+      solUsdPriceFeedAccountPubkey
+    );
+
+    context.setAccount(solUsdPriceFeedAccountPubkey, feedAccountInfo);
+
     console.log('pricefeed:', solUsdPriceFeedAccount);
 
     console.log('Pyth Account Info:', accountInfo);
@@ -133,7 +140,7 @@ describe('Lending Smart Contract Tests', () => {
     console.log('Create User Account', initUserTx);
 
     const initUSDCBankTx = await program.methods
-      .initBank(new BN(0), new BN(0))
+      .initBank(new BN(1), new BN(1))
       .accounts({
         signer: signer.publicKey,
         mint: mintUSDC,
@@ -157,7 +164,7 @@ describe('Lending Smart Contract Tests', () => {
     console.log('Mint to USDC Bank Signature:', mintTx);
 
     const initSOLBankTx = await program.methods
-      .initBank(new BN(0), new BN(0))
+      .initBank(new BN(1), new BN(1))
       .accounts({
         signer: signer.publicKey,
         mint: mintSOL,
@@ -202,7 +209,7 @@ describe('Lending Smart Contract Tests', () => {
     console.log('Mint to USDC Bank Signature:', mintUSDCTx);
 
     const depositUSDC = await program.methods
-      .deposit(new BN(1000000))
+      .deposit(new BN(100000000000))
       .accounts({
         signer: signer.publicKey,
         mint: mintUSDC,
@@ -222,6 +229,28 @@ describe('Lending Smart Contract Tests', () => {
       })
       .rpc({ commitment: 'confirmed' });
 
-    console.log('Deposit USDC', borrowSOL);
+    console.log('Borrow SOL', borrowSOL);
+
+    const repaySOL = await program.methods
+      .repay(new BN(1))
+      .accounts({
+        signer: signer.publicKey,
+        mint: mintSOL,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc({ commitment: 'confirmed' });
+
+    console.log('Repay SOL', repaySOL);
+
+    const withdrawUSDC = await program.methods
+      .withdraw(new BN(100))
+      .accounts({
+        signer: signer.publicKey,
+        mint: mintUSDC,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc({ commitment: 'confirmed' });
+
+    console.log('Withdraw USDC', withdrawUSDC);
   });
 });

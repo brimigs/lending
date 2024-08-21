@@ -68,12 +68,16 @@ pub fn process_borrow(ctx: Context<Borrow>, amount: u64) -> Result<()> {
             let usdc_feed_id = get_feed_id_from_hex(USDC_USD_FEED_ID)?;
             let usdc_price = price_update.get_price_no_older_than(&Clock::get()?, MAXIMUM_AGE, &usdc_feed_id)?;
             total_collateral = usdc_price.price as u64 * user.deposited_usdc;
+            msg!("Total collateral: {}", total_collateral);
         }
     }
 
     // Note: For simplicity, interest is not being included in these calculations. 
-
+    msg!("Total collateral: {}", total_collateral);
+    msg!("max_ltv: {}", bank.max_ltv);
     let borrowable_amount = total_collateral as u64 * bank.max_ltv;
+
+    msg!("Borrowable amount: {}", borrowable_amount);
 
     if borrowable_amount < amount {
         return Err(ErrorCode::OverBorrowableAmount.into());
@@ -90,14 +94,27 @@ pub fn process_borrow(ctx: Context<Borrow>, amount: u64) -> Result<()> {
         from: ctx.accounts.bank_token_account.to_account_info(),
         mint: ctx.accounts.mint.to_account_info(),
         to: ctx.accounts.user_token_account.to_account_info(),
-        authority: ctx.accounts.signer.to_account_info(),
+        authority: ctx.accounts.bank_token_account.to_account_info(),
     };
 
     let cpi_program = ctx.accounts.token_program.to_account_info();
-    let cpi_ctx = CpiContext::new(cpi_program, transfer_cpi_accounts);
+    let mint_key = ctx.accounts.mint.key();
+    let signer_seeds: &[&[&[u8]]] = &[
+        &[
+            b"treasury",
+            mint_key.as_ref(),
+            &[ctx.bumps.bank_token_account],
+        ],
+    ];
+    let cpi_ctx = CpiContext::new(cpi_program, transfer_cpi_accounts).with_signer(signer_seeds);
     let decimals = ctx.accounts.mint.decimals;
 
     token_interface::transfer_checked(cpi_ctx, amount, decimals)?;
+
+    if bank.total_borrowed == 0 {
+        bank.total_borrowed = amount;
+        bank.total_borrowed_shares = amount;
+    }
 
     let borrow_ratio = amount.checked_div(bank.total_borrowed).unwrap();
     let users_shares = bank.total_borrowed_shares.checked_mul(borrow_ratio).unwrap();

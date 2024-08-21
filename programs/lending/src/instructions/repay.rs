@@ -91,8 +91,8 @@ pub fn process_repay(ctx: Context<Repay>, amount: u64) -> Result<()> {
             user.borrowed_usdc_shares -= users_shares;
         },
         _ => {
-            user.borrowed_usdc -= amount;
-            user.borrowed_usdc_shares -= users_shares; 
+            user.borrowed_sol -= amount;
+            user.borrowed_sol_shares -= users_shares; 
         }
     }
 
