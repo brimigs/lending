@@ -15,13 +15,13 @@ import {
   ProgramTestContext,
 } from 'solana-bankrun';
 
-import { PublicKey, Keypair } from '@solana/web3.js';
+import { PublicKey, Keypair, Connection } from '@solana/web3.js';
 
 // @ts-ignore
 import IDL from '../target/idl/lending_protocol.json';
 import { LendingProtocol } from '../target/types/lending_protocol';
 import { SYSTEM_PROGRAM_ID } from '@coral-xyz/anchor/dist/cjs/native/system';
-import { BankrunContextWrapper } from './bankrun-utils/bankrunConnection';
+import { BankrunContextWrapper } from '../bankrun-utils/bankrunConnection';
 
 describe('Lending Smart Contract Tests', () => {
   let signer: Keypair;
@@ -43,11 +43,20 @@ describe('Lending Smart Contract Tests', () => {
 
     // const program = anchor.workspace
     //   .LendingProtocol as Program<LendingProtocol>;
+    const pyth = new PublicKey('7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE');
+
+    const devnetConnection = new Connection('https://api.devnet.solana.com');
+    const accountInfo = await devnetConnection.getAccountInfo(pyth);
 
     context = await startAnchor(
       '',
       [{ name: 'lending', programId: new PublicKey(IDL.address) }],
-      []
+      [
+        {
+          address: pyth,
+          info: accountInfo,
+        },
+      ]
     );
     provider = new BankrunProvider(context);
 
@@ -61,13 +70,15 @@ describe('Lending Smart Contract Tests', () => {
     });
 
     const SOL_PRICE_FEED_ID =
-      '0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d';
+      '0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a';
 
     const solUsdPriceFeedAccount = pythSolanaReceiver
       .getPriceFeedAccountAddress(0, SOL_PRICE_FEED_ID)
       .toBase58();
 
-    console.log(solUsdPriceFeedAccount);
+    console.log('pricefeed:', solUsdPriceFeedAccount);
+
+    console.log('Pyth Account Info:', accountInfo);
 
     program = new Program<LendingProtocol>(IDL as LendingProtocol, provider);
 
@@ -113,7 +124,7 @@ describe('Lending Smart Contract Tests', () => {
     console.log('SOL Bank Account', solBankAccount.toBase58());
 
     const initUserTx = await program.methods
-      .initUser()
+      .initUser(mintUSDC)
       .accounts({
         signer: signer.publicKey,
       })
@@ -191,7 +202,7 @@ describe('Lending Smart Contract Tests', () => {
     console.log('Mint to USDC Bank Signature:', mintUSDCTx);
 
     const depositUSDC = await program.methods
-      .deposit(new BN(10))
+      .deposit(new BN(1000000))
       .accounts({
         signer: signer.publicKey,
         mint: mintUSDC,
@@ -201,16 +212,16 @@ describe('Lending Smart Contract Tests', () => {
 
     console.log('Deposit USDC', depositUSDC);
 
-    // const borrowSOL = await program.methods
-    //   .borrow(new BN(1))
-    //   .accounts({
-    //     signer: signer.publicKey,
-    //     mint: mintSOL,
-    //     tokenProgram: TOKEN_PROGRAM_ID,
-    //     priceUpdate:
-    //   })
-    //   .rpc({ commitment: 'confirmed' });
+    const borrowSOL = await program.methods
+      .borrow(new BN(1))
+      .accounts({
+        signer: signer.publicKey,
+        mint: mintSOL,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        priceUpdate: solUsdPriceFeedAccount,
+      })
+      .rpc({ commitment: 'confirmed' });
 
-    // console.log('Deposit USDC', borrowSOL);
+    console.log('Deposit USDC', borrowSOL);
   });
 });

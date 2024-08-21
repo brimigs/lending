@@ -56,24 +56,30 @@ pub fn process_borrow(ctx: Context<Borrow>, amount: u64) -> Result<()> {
 
     let price_update = &mut ctx.accounts.price_update;
 
-    let sol_feed_id = get_feed_id_from_hex(SOL_USD_FEED_ID)?; 
-    let usdc_feed_id = get_feed_id_from_hex(USDC_USD_FEED_ID)?;
+    let total_collateral: u64;
 
-    let sol_price = price_update.get_price_no_older_than(&Clock::get()?, MAXIMUM_AGE, &sol_feed_id)?;
-    let usdc_price = price_update.get_price_no_older_than(&Clock::get()?, MAXIMUM_AGE, &usdc_feed_id)?;
+    match ctx.accounts.mint.to_account_info().key() {
+        key if key == user.usdc_address => {
+            let sol_feed_id = get_feed_id_from_hex(SOL_USD_FEED_ID)?; 
+            let sol_price = price_update.get_price_no_older_than(&Clock::get()?, MAXIMUM_AGE, &sol_feed_id)?;
+            total_collateral = sol_price.price as u64 * user.deposited_sol;
+        },
+        _ => {
+            let usdc_feed_id = get_feed_id_from_hex(USDC_USD_FEED_ID)?;
+            let usdc_price = price_update.get_price_no_older_than(&Clock::get()?, MAXIMUM_AGE, &usdc_feed_id)?;
+            total_collateral = usdc_price.price as u64 * user.deposited_usdc;
+        }
+    }
 
     // Note: For simplicity, interest is not being included in these calculations. 
 
-    let total_collateral = (sol_price.price as u64 * user.deposited_sol) + (usdc_price.price as u64 * user.deposited_usdc);
-    let total_borrowed = (sol_price.price as u64 * user.borrowed_sol) + (usdc_price.price as u64 * user.borrowed_usdc);    
-
-    let borrowable_amount = (total_collateral as u64 * bank.max_ltv) - total_borrowed;
+    let borrowable_amount = total_collateral as u64 * bank.max_ltv;
 
     if borrowable_amount < amount {
         return Err(ErrorCode::OverBorrowableAmount.into());
     }       
 
-    let safe_borrowable_amount = (total_collateral * bank.liquidation_threshold) - total_borrowed;
+    let safe_borrowable_amount = total_collateral * bank.liquidation_threshold;
 
     // Warn if borrowing beyond the safe amount but still allow if within the max borrowable amount
     if safe_borrowable_amount < amount {

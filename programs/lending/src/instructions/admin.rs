@@ -52,9 +52,10 @@ pub fn process_init_bank(ctx: Context<InitBank>, liquidation_threshold: u64, max
     Ok(())
 }
 
-pub fn process_init_user(ctx: Context<InitUser>) -> Result<()> {
+pub fn process_init_user(ctx: Context<InitUser>, usdc_address: Pubkey) -> Result<()> {
     let user = &mut ctx.accounts.user_account;
     user.owner = ctx.accounts.signer.key();
+    user.usdc_address = usdc_address;
     
     let now = Clock::get()?.unix_timestamp; 
     user.last_updated = now;
