@@ -35,14 +35,7 @@ describe('Lending Smart Contract Tests', () => {
   let context: ProgramTestContext;
   let bankrunContextWrapper: BankrunContextWrapper;
 
-  it('create banks and user account', async () => {
-    // const provider = anchor.AnchorProvider.env();
-    // const connection = provider.connection;
-    // const wallet = provider.wallet as anchor.Wallet;
-    // anchor.setProvider(provider);
-
-    // const program = anchor.workspace
-    //   .LendingProtocol as Program<LendingProtocol>;
+  it('Test User Flow', async () => {
     const pyth = new PublicKey('7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE');
 
     const devnetConnection = new Connection('https://api.devnet.solana.com');

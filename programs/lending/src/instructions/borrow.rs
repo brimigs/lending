@@ -73,6 +73,7 @@ pub fn process_borrow(ctx: Context<Borrow>, amount: u64) -> Result<()> {
     }
 
     // Note: For simplicity, interest is not being included in these calculations. 
+    // FIXME: Add interest calculations
     msg!("Total collateral: {}", total_collateral);
     msg!("max_ltv: {}", bank.max_ltv);
     let borrowable_amount = total_collateral as u64 * bank.max_ltv;

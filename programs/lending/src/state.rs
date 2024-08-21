@@ -27,6 +27,7 @@ pub struct Bank {
     pub last_updated: i64,
 }
 
+// Challenge: How would you update the user state to save "all_deposited_assets" and "all_borrowed_assets" to accommodate for several asset listings?  
 #[account]
 #[derive(InitSpace)]
 pub struct User {
@@ -56,4 +57,3 @@ pub struct User {
     pub last_updated: i64,
 }
 
-// Challenge: How would you update the user state to save "all_deposited_assets" and "all_borrowed_assets" to accommodate for several asset listings?  
