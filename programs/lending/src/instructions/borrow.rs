@@ -1,3 +1,5 @@
+use std::f32::consts::E;
+
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{ self, Mint, TokenAccount, TokenInterface, TransferChecked };
@@ -62,34 +64,22 @@ pub fn process_borrow(ctx: Context<Borrow>, amount: u64) -> Result<()> {
         key if key == user.usdc_address => {
             let sol_feed_id = get_feed_id_from_hex(SOL_USD_FEED_ID)?; 
             let sol_price = price_update.get_price_no_older_than(&Clock::get()?, MAXIMUM_AGE, &sol_feed_id)?;
-            total_collateral = sol_price.price as u64 * user.deposited_sol;
+            let accrued_interest = calculate_accrued_interest(user.deposited_sol, bank.interest_rate, user.last_updated)?;
+            total_collateral = sol_price.price as u64 * (user.deposited_sol + accrued_interest);
         },
         _ => {
             let usdc_feed_id = get_feed_id_from_hex(USDC_USD_FEED_ID)?;
             let usdc_price = price_update.get_price_no_older_than(&Clock::get()?, MAXIMUM_AGE, &usdc_feed_id)?;
             total_collateral = usdc_price.price as u64 * user.deposited_usdc;
-            msg!("Total collateral: {}", total_collateral);
+
         }
     }
 
-    // Note: For simplicity, interest is not being included in these calculations. 
-    // FIXME: Add interest calculations
-    msg!("Total collateral: {}", total_collateral);
-    msg!("max_ltv: {}", bank.max_ltv);
-    let borrowable_amount = total_collateral as u64 * bank.max_ltv;
-
-    msg!("Borrowable amount: {}", borrowable_amount);
+    let borrowable_amount = total_collateral as u64 *  bank.liquidation_threshold;
 
     if borrowable_amount < amount {
         return Err(ErrorCode::OverBorrowableAmount.into());
     }       
-
-    let safe_borrowable_amount = total_collateral * bank.liquidation_threshold;
-
-    // Warn if borrowing beyond the safe amount but still allow if within the max borrowable amount
-    if safe_borrowable_amount < amount {
-        msg!("Warning: Borrowing above the safe borrowable amount, risk of liquidation may increase.");
-    }
 
     let transfer_cpi_accounts = TransferChecked {
         from: ctx.accounts.bank_token_account.to_account_info(),
@@ -115,7 +105,7 @@ pub fn process_borrow(ctx: Context<Borrow>, amount: u64) -> Result<()> {
     if bank.total_borrowed == 0 {
         bank.total_borrowed = amount;
         bank.total_borrowed_shares = amount;
-    }
+    } 
 
     let borrow_ratio = amount.checked_div(bank.total_borrowed).unwrap();
     let users_shares = bank.total_borrowed_shares.checked_mul(borrow_ratio).unwrap();
@@ -135,4 +125,11 @@ pub fn process_borrow(ctx: Context<Borrow>, amount: u64) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn calculate_accrued_interest(deposited: u64, interest_rate: u64, last_update: i64) -> Result<u64> {
+    let current_time = Clock::get()?.unix_timestamp;
+    let time_elapsed = current_time - last_update;
+    let new_value = (deposited as f64 * E.powf(interest_rate as f32 * time_elapsed as f32) as f64) as u64;
+    Ok(new_value)
 }

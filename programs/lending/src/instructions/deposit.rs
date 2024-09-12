@@ -27,8 +27,7 @@ pub struct Deposit<'info> {
     )]  
     pub user_account: Account<'info, User>,
     #[account( 
-        init_if_needed, 
-        payer = signer,
+        mut,
         associated_token::mint = mint, 
         associated_token::authority = signer,
         associated_token::token_program = token_program,
@@ -91,6 +90,8 @@ pub fn process_deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
 
     bank.total_deposits += amount;
     bank.total_deposit_shares += users_shares;
+
+    user.last_updated = Clock::get()?.unix_timestamp;
 
     Ok(())
 }

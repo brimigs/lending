@@ -87,13 +87,13 @@ pub fn process_liquidate(ctx: Context<Liquidate>) -> Result<()> {
     let total_collateral = (sol_price.price as u64 * user.deposited_sol) + (usdc_price.price as u64 * user.deposited_usdc);
     let total_borrowed = (sol_price.price as u64 * user.borrowed_sol) + (usdc_price.price as u64 * user.borrowed_usdc);    
 
-    let health_factor = (total_collateral * bank.max_ltv)/total_borrowed;
+    let health_factor = (total_collateral * collateral_bank.liquidation_threshold)/total_borrowed;
 
     if health_factor >= 1 {
         return Err(ErrorCode::NotUndercollateralized.into());
     }
 
-    let liquidation_amount = total_borrowed * bank.liquidation_close_factor;
+    let liquidation_amount = total_borrowed * collateral_bank.liquidation_close_factor;
 
     // liquidator pays back the borrowed amount back to the bank 
 
@@ -110,7 +110,7 @@ pub fn process_liquidate(ctx: Context<Liquidate>) -> Result<()> {
 
     token_interface::transfer_checked(cpi_ctx_to_bank, liquidation_amount, decimals)?;
 
-    // Transfer liquidation bonus to liquidator
+    // Transfer liquidation value and bonus to liquidator
     let liquidation_bonus = (liquidation_amount * collateral_bank.liquidation_bonus) + liquidation_amount;
     
     let transfer_to_liquidator = TransferChecked {
